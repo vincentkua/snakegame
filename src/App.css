@@ -124,15 +124,21 @@ button:hover {
 
 /* Snake Game Styles */
 .snake-app {
-  max-width: 480px;
-  margin: 40px auto;
-  background: #222;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
-  padding: 32px 24px 24px 24px;
-  font-family: "Segoe UI", Arial, sans-serif;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgb(34,34,34);
+  font-family: 'Segoe UI', Arial, sans-serif;
   color: #fff;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 .snake-app h1 {
   color: #8bc34a;
@@ -149,12 +155,10 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: #333;
-  border-radius: 8px;
-  padding: 8px;
-  margin: 0 auto 18px auto;
-  width: fit-content;
-  touch-action: none;
+  margin: 0 auto;
+  min-width: calc(20 * 18px + 19 * 2px);
+  max-width: calc(20 * 18px + 19 * 2px);
+  box-sizing: content-box;
 }
 .row {
   display: flex;
@@ -196,20 +200,34 @@ button:hover {
 
 /* Mobile support */
 .mobile-support {
-  max-width: 100vw;
-  min-height: 100vh;
-  padding: 8vw 0 0 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 @media (max-width: 600px) {
+  body, html, #root {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
   .snake-app {
-    max-width: 100vw;
-    padding: 8vw 0 0 0;
-    border-radius: 0;
-    min-height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
   }
   .board {
-    padding: 2vw;
+    min-width: calc(20 * 4vw + 19 * 0.5vw);
+    max-width: calc(20 * 4vw + 19 * 0.5vw);
+    box-sizing: content-box;
   }
   .cell {
     width: 4vw;
