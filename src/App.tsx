@@ -8,7 +8,6 @@ const INITIAL_SNAKE = [
   { x: 6, y: 10 },
 ];
 const INITIAL_DIRECTION = { x: 1, y: 0 };
-const SPEED = 120;
 
 function getRandomFood(
   snake: { x: number; y: number }[]
@@ -25,6 +24,10 @@ function getRandomFood(
 
 function isMobile() {
   return /Mobi|Android/i.test(navigator.userAgent);
+}
+
+function getSpeed(score: number) {
+  return Math.max(40, 120 - Math.floor(score / 10) * 20);
 }
 
 function App() {
@@ -117,9 +120,9 @@ function App() {
         }
         return newSnake;
       });
-    }, SPEED);
+    }, getSpeed(score));
     return () => clearInterval(interval);
-  }, [direction, food, gameOver]);
+  }, [direction, food, gameOver, score]);
 
   const handleRestart = () => {
     setSnake(INITIAL_SNAKE);
