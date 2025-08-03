@@ -31,6 +31,10 @@ function getSpeed(score: number) {
   return Math.max(40, 120 - Math.floor(score / 10) * 20);
 }
 
+// Track last touch positions for gesture prevention
+let lastTouchY = 0;
+let lastTouchX = 0;
+
 function App() {
   const [snake, setSnake] = useState(INITIAL_SNAKE);
   const [direction, setDirection] = useState(INITIAL_DIRECTION);
@@ -187,6 +191,37 @@ function App() {
     }
   }, [score]);
 
+  // Prevent pull-to-refresh and swipe-back gestures on mobile browsers
+  useEffect(() => {
+    function preventPullToRefresh(e: TouchEvent) {
+      if (
+        window.scrollY === 0 &&
+        e.touches[0].clientY > 10 &&
+        e.touches[0].clientY - lastTouchY > 10
+      ) {
+        e.preventDefault();
+      }
+      lastTouchY = e.touches[0].clientY;
+    }
+    function preventSwipeBack(e: TouchEvent) {
+      if (
+        e.touches[0].clientX < 30 &&
+        e.touches[0].clientX - lastTouchX > 10
+      ) {
+        e.preventDefault();
+      }
+      lastTouchX = e.touches[0].clientX;
+    }
+    document.addEventListener("touchmove", preventPullToRefresh, {
+      passive: false,
+    });
+    document.addEventListener("touchmove", preventSwipeBack, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", preventPullToRefresh);
+      document.removeEventListener("touchmove", preventSwipeBack);
+    };
+  }, []);
+
   const handleRestart = () => {
     setSnake(INITIAL_SNAKE);
     setDirection(INITIAL_DIRECTION);
@@ -307,7 +342,14 @@ function App() {
             zIndex: 20,
           }}
         >
-          <p style={{ fontSize: "1.6rem", fontWeight: "bold", margin: 0,color: "#f36565" }}>
+          <p
+            style={{
+              fontSize: "1.6rem",
+              fontWeight: "bold",
+              margin: 0,
+              color: "#f36565",
+            }}
+          >
             Game Over!
           </p>
           <button
