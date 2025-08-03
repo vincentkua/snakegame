@@ -50,6 +50,7 @@ function App() {
     score: number;
   } | null>(null);
   const moveRef = useRef(direction);
+  const directionChangedRef = useRef(false); // Track direction change per tick
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const appRef = useRef<HTMLDivElement>(null);
 
@@ -76,14 +77,20 @@ function App() {
   useEffect(() => {
     if (gameOver) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp" && moveRef.current.y !== 1)
+      if (directionChangedRef.current) return;
+      if (e.key === "ArrowUp" && moveRef.current.y !== 1) {
         setDirection({ x: 0, y: -1 });
-      else if (e.key === "ArrowDown" && moveRef.current.y !== -1)
+        directionChangedRef.current = true;
+      } else if (e.key === "ArrowDown" && moveRef.current.y !== -1) {
         setDirection({ x: 0, y: 1 });
-      else if (e.key === "ArrowLeft" && moveRef.current.x !== 1)
+        directionChangedRef.current = true;
+      } else if (e.key === "ArrowLeft" && moveRef.current.x !== 1) {
         setDirection({ x: -1, y: 0 });
-      else if (e.key === "ArrowRight" && moveRef.current.x !== -1)
+        directionChangedRef.current = true;
+      } else if (e.key === "ArrowRight" && moveRef.current.x !== -1) {
         setDirection({ x: 1, y: 0 });
+        directionChangedRef.current = true;
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -135,6 +142,7 @@ function App() {
   useEffect(() => {
     if (gameOver) return;
     const interval = setInterval(() => {
+      directionChangedRef.current = false; // Reset direction change per tick
       setSnake((prev) => {
         const newHead = {
           x: (prev[0].x + direction.x + BOARD_SIZE) % BOARD_SIZE,
@@ -230,6 +238,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const savedName = localStorage.getItem("snakePlayerName");
+    if (savedName && typeof savedName === "string") {
+      setPlayerName(savedName);
+    }
+
     const el = appRef.current;
     if (!el) return;
     let startY = 0;
@@ -266,6 +279,7 @@ function App() {
     setIsUploading(true);
     try {
       // Update topscore and championdata in Firestore, merge: true
+      localStorage.setItem("snakePlayerName", playerName.trim());
       const scoresRef = doc(db, "scores", "topscoredata");
       await setDoc(
         scoresRef,
@@ -275,7 +289,6 @@ function App() {
         },
         { merge: true }
       );
-      setPlayerName("");
       setTopScoreData({ name: playerName.trim(), score }); // Update local state
     } catch (err) {
       // handle error
@@ -505,9 +518,6 @@ function App() {
             >
               <p style={{ fontSize: "4rem", margin: 0, color: "#f36565" }}>
                 {score}
-              </p>
-              <p style={{ fontSize: "0.8rem", margin: 0, color: "#f36565" }}>
-                Total Score
               </p>
               <br />
               <p
