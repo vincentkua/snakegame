@@ -222,6 +222,29 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const el = appRef.current;
+    if (!el) return;
+    let startY = 0;
+    function handleTouchStart(e: TouchEvent) {
+      startY = e.touches[0].clientY;
+    }
+    function handleTouchMove(e: TouchEvent) {
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+      // If at top and swiping down, block all downward moves
+      if (window.scrollY === 0 && deltaY > 0) {
+        e.preventDefault();
+      }
+    }
+    el.addEventListener("touchstart", handleTouchStart, { passive: false });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
   const handleRestart = () => {
     setSnake(INITIAL_SNAKE);
     setDirection(INITIAL_DIRECTION);
@@ -231,7 +254,11 @@ function App() {
   };
 
   return (
-    <div className="snake-app mobile-support" ref={appRef}>
+    <div
+      className="snake-app mobile-support"
+      ref={appRef}
+      style={{ overscrollBehaviorY: "contain", touchAction: "pan-x" }}
+    >
       <h1>Snake Game</h1>
       <div className="score">Score: {score}</div>
       <div
