@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyALEO5s3UEHBm2MPMSa-eiyZ0Vg9bayI-4",
-  authDomain: "vk-snakegame.firebaseapp.com",
-  projectId: "vk-snakegame",
-  storageBucket: "vk-snakegame.firebasestorage.app",
-  messagingSenderId: "390793231398",
-  appId: "1:390793231398:web:9f084138696d7e78c23ae7",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
