@@ -274,8 +274,24 @@ function App() {
   };
 
   async function handleSubmitScore() {
-    if (!playerName.trim() || !topScoreData || score <= topScoreData.score)
+    // get the latest highscore data from Firestore again
+    let latestTopScore = 0;
+    const latestTopScoreData = await getDoc(doc(db, "scores", "topscoredata"));
+    if (latestTopScoreData.exists()) {
+      const data = latestTopScoreData.data() as { name: string; score: number };
+      latestTopScore = data.score;
+    }
+
+    if (score <= latestTopScore){
+      alert("Oh no !!! Someone else has just beat your score !!!");
+      handleRestart();
       return;
+    }
+
+    if (!playerName.trim() || !topScoreData || score <= topScoreData.score) {
+      return;
+    }
+     
     setIsUploading(true);
     try {
       // Update topscore and championdata in Firestore, merge: true
@@ -318,7 +334,11 @@ function App() {
     <div
       className="snake-app mobile-support"
       ref={appRef}
-      style={{ overscrollBehaviorY: "contain", touchAction: "pan-x" }}
+      style={{
+        overscrollBehaviorY: "contain",
+        touchAction: "pan-x",
+        marginTop: "50px",
+      }}
     >
       <h1>Snake Game</h1>
       <div className="score">Score: {score}</div>
@@ -417,7 +437,7 @@ function App() {
       {gameOver && (
         <div
           style={{
-            position: "absolute",
+            position: "fixed",
             left: 0,
             top: 0,
             width: "100%",
@@ -554,15 +574,15 @@ function App() {
           )}
         </div>
       )}
-      {/* Show top score at the bottom */}
+      {/* Show top score at the top */}
       <div
         style={{
           position: "fixed",
-          bottom: 0,
+          top: 0,
           left: 0,
           width: "100%",
           background: "rgba(0,0,0,0.7)",
-          color: "#ffd700",
+          color: "rgb(216, 192, 57)",
           textAlign: "center",
           padding: "8px 0",
           fontSize: "1.1rem",
@@ -571,10 +591,10 @@ function App() {
       >
         {topScoreData ? (
           <span>
-            🏆 Top Score: <b>{topScoreData.score}</b> ({topScoreData.name})
+            🏆 Top Score: <b>{topScoreData.score}</b> ({topScoreData.name}) 🏆
           </span>
         ) : (
-          <span>🏆 Top Score: N/A</span>
+          <span>🏆 Top Score: N/A 🏆</span>
         )}
       </div>
     </div>
