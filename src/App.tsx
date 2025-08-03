@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
+import { db } from "./firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const BOARD_SIZE = 20;
 const INITIAL_SNAKE = [
@@ -41,6 +43,12 @@ function App() {
   const [food, setFood] = useState(getRandomFood(INITIAL_SNAKE));
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [topScoreData, setTopScoreData] = useState<{
+    name: string;
+    score: number;
+  } | null>(null);
   const moveRef = useRef(direction);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const appRef = useRef<HTMLDivElement>(null);
@@ -204,10 +212,7 @@ function App() {
       lastTouchY = e.touches[0].clientY;
     }
     function preventSwipeBack(e: TouchEvent) {
-      if (
-        e.touches[0].clientX < 30 &&
-        e.touches[0].clientX - lastTouchX > 10
-      ) {
+      if (e.touches[0].clientX < 30 && e.touches[0].clientX - lastTouchX > 10) {
         e.preventDefault();
       }
       lastTouchX = e.touches[0].clientX;
@@ -215,7 +220,9 @@ function App() {
     document.addEventListener("touchmove", preventPullToRefresh, {
       passive: false,
     });
-    document.addEventListener("touchmove", preventSwipeBack, { passive: false });
+    document.addEventListener("touchmove", preventSwipeBack, {
+      passive: false,
+    });
     return () => {
       document.removeEventListener("touchmove", preventPullToRefresh);
       document.removeEventListener("touchmove", preventSwipeBack);
@@ -252,6 +259,47 @@ function App() {
     setScore(0);
     setGameOver(false);
   };
+
+  async function handleSubmitScore() {
+    if (!playerName.trim() || !topScoreData || score <= topScoreData.score)
+      return;
+    setIsUploading(true);
+    try {
+      // Update topscore and championdata in Firestore, merge: true
+      const scoresRef = doc(db, "scores", "topscoredata");
+      await setDoc(
+        scoresRef,
+        {
+          name: playerName.trim(),
+          score,
+        },
+        { merge: true }
+      );
+      setPlayerName("");
+      setTopScoreData({ name: playerName.trim(), score }); // Update local state
+    } catch (err) {
+      // handle error
+    }
+    setIsUploading(false);
+    handleRestart();
+  }
+
+  useEffect(() => {
+    async function fetchTopScore() {
+      try {
+        const docRef = doc(db, "scores", "topscoredata");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setTopScoreData(docSnap.data() as { name: string; score: number });
+        } else {
+          setTopScoreData(null);
+        }
+      } catch (err) {
+        setTopScoreData(null);
+      }
+    }
+    fetchTopScore();
+  }, []);
 
   return (
     <div
@@ -355,48 +403,170 @@ function App() {
       </div>
       {gameOver && (
         <div
-          className="game-over"
           style={{
             position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            background: "rgba(0,0,0,0.8)",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
+            background: "rgba(0,0,0,0.5)",
             color: "#fff",
-            padding: "32px 24px",
-            borderRadius: "16px",
             textAlign: "center",
             zIndex: 20,
           }}
         >
-          <p
-            style={{
-              fontSize: "1.6rem",
-              fontWeight: "bold",
-              margin: 0,
-              color: "#f36565",
-            }}
-          >
-            Game Over!
-          </p>
-          <button
-            onClick={handleRestart}
-            style={{
-              marginTop: "16px",
-              fontSize: "1.2rem",
-              padding: "8px 24px",
-              borderRadius: "8px",
-              border: "none",
-              background: "rgb(181, 181, 181)",
-              color: "#222",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-          >
-            Restart
-          </button>
+          {topScoreData && score > topScoreData.score ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "90%",
+              }}
+            >
+              <p style={{ fontSize: "4rem", margin: 0, color: "#ffd700" }}>
+                {score}
+              </p>
+              <p style={{ fontSize: "1.2rem", margin: 0, color: "yellow" }}>
+                New High Score
+              </p>
+
+              <br />
+
+              <div style={{ margin: "16px 0" }}>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Enter your name"
+                  style={{
+                    fontSize: "1.1rem",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #ccc",
+                    width: "100%",
+                    maxWidth: "10rem",
+                    textAlign: "center",
+                  }}
+                />
+                <br />
+                <br />
+                <button
+                  onClick={handleSubmitScore}
+                  style={{
+                    padding: "8px 24px",
+                    fontSize: "1.1rem",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: "#f4d640",
+                    color: "#222",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    width: "100%",
+                    maxWidth: "10rem",
+                  }}
+                  disabled={
+                    isUploading || !topScoreData || score <= topScoreData.score
+                  }
+                >
+                  {isUploading ? "Uploading..." : "Submit"}
+                </button>
+
+                <button
+                  onClick={handleRestart}
+                  style={{
+                    marginTop: "8px",
+                    padding: "8px 24px",
+                    fontSize: "1.1rem",
+                    borderRadius: "8px",
+                    border: "none",
+                    background: "#9ea39e",
+                    color: "#222",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    width: "100%",
+                    maxWidth: "10rem",
+                  }}
+                >
+                  Play Again
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "90%",
+              }}
+            >
+              <p style={{ fontSize: "4rem", margin: 0, color: "#f36565" }}>
+                {score}
+              </p>
+              <p style={{ fontSize: "0.8rem", margin: 0, color: "#f36565" }}>
+                Total Score
+              </p>
+              <br />
+              <p
+                style={{
+                  fontSize: "1.6rem",
+                  fontWeight: "bold",
+                  margin: 0,
+                  color: "#f36565",
+                }}
+              >
+                Game Over!
+              </p>
+
+              <br />
+              <button
+                onClick={handleRestart}
+                style={{
+                  marginTop: "16px",
+                  fontSize: "1.2rem",
+                  padding: "8px 24px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#9ea39e",
+                  color: "#222",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  width: "100%",
+                  maxWidth: "10rem",
+                }}
+              >
+                Restart
+              </button>
+            </div>
+          )}
         </div>
       )}
+      {/* Show top score at the bottom */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: "100%",
+          background: "rgba(0,0,0,0.7)",
+          color: "#ffd700",
+          textAlign: "center",
+          padding: "8px 0",
+          fontSize: "1.1rem",
+          zIndex: 10,
+        }}
+      >
+        {topScoreData ? (
+          <span>
+            🏆 Top Score: <b>{topScoreData.score}</b> ({topScoreData.name})
+          </span>
+        ) : (
+          <span>🏆 Top Score: N/A</span>
+        )}
+      </div>
     </div>
   );
 }
