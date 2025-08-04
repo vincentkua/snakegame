@@ -406,35 +406,87 @@ function App() {
     fetchTopScore();
   }, []);
 
-  // Admin click counter for hidden feature
-  const [adminClickCount, setAdminClickCount] = useState(0);
+  // Admin reset trigger state
+  const [adminStage, setAdminStage] = useState<"none" | "title" | "topscore">(
+    "none"
+  );
+  const [adminTitleCount, setAdminTitleCount] = useState(0);
+  const [adminTopScoreCount, setAdminTopScoreCount] = useState(0);
 
-  // Handler for Top Score area click
-  const handleTopScoreClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation(); // Prevent global click handler from firing
-    if (adminClickCount + 1 >= 10) {
-      try {
-        const scoresRef = doc(db, "scores", "topscoredata");
-        await setDoc(
-          scoresRef,
-          { name: "New Challenge", score: 0 },
-          { merge: true }
-        );
-        setTopScoreData({ name: "New Challenge", score: 0 });
-      } catch (err) {
-        // handle error silently
-      }
-      alert("Top Score Reset Done !");
-      setAdminClickCount(0);
+  // Handler for Snake Game title click
+  const handleTitleClick = (e: React.MouseEvent<HTMLHeadingElement>) => {
+    e.stopPropagation();
+    if (adminStage === "none" || adminStage === "title") {
+      setAdminStage("title");
+      setAdminTitleCount((prev) => {
+        if (prev + 1 >= 10) {
+          setAdminStage("topscore");
+          setAdminTopScoreCount(0);
+          return 0;
+        }
+        return prev + 1;
+      });
+      setAdminTopScoreCount(0);
     } else {
-      setAdminClickCount(adminClickCount + 1);
+      // If in topscore stage, clicking title resets everything
+      setAdminStage("none");
+      setAdminTitleCount(0);
+      setAdminTopScoreCount(0);
     }
   };
 
-  // Reset admin count if click outside Top Score area
   useEffect(() => {
-    const handleGlobalClick = () => {
-      setAdminClickCount(0);
+    if (adminTitleCount === 1) {
+      console.log("Why you clicked this ?");
+    }
+  }, [adminTitleCount]);
+
+  // Handler for Top Score area click
+  const handleTopScoreClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (adminStage === "topscore") {
+      if (adminTopScoreCount + 1 >= 10) {
+        try {
+          const scoresRef = doc(db, "scores", "topscoredata");
+          await setDoc(
+            scoresRef,
+            { name: "New Challenge", score: 0 },
+            { merge: true }
+          );
+          setTopScoreData({ name: "New Challenge", score: 0 });
+        } catch (err) {
+          // handle error silently
+        }
+        alert("Top Score Reset Done !");
+        setAdminStage("none");
+        setAdminTitleCount(0);
+        setAdminTopScoreCount(0);
+      } else {
+        setAdminTopScoreCount(adminTopScoreCount + 1);
+      }
+    } else {
+      // If not in topscore stage, clicking Top Score resets everything
+      setAdminStage("none");
+      setAdminTitleCount(0);
+      setAdminTopScoreCount(0);
+    }
+  };
+
+  // Reset admin counts if click outside title or Top Score area
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // Only reset if not clicking title or Top Score area
+      const titleEl = document.getElementById("snake-title-admin");
+      const topScoreEl = document.getElementById("snake-topscore-admin");
+      if (
+        (titleEl && titleEl.contains(e.target as Node)) ||
+        (topScoreEl && topScoreEl.contains(e.target as Node))
+      ) {
+        return;
+      }
+      setAdminStage("none");
+      setAdminTitleCount(0);
+      setAdminTopScoreCount(0);
     };
     document.addEventListener("click", handleGlobalClick);
     return () => {
@@ -452,7 +504,9 @@ function App() {
         marginTop: "50px",
       }}
     >
-      <h1>Snake Game</h1>
+      <h1 id="snake-title-admin" onClick={handleTitleClick}>
+        Snake Game
+      </h1>
       <div className="score">Score: {score}</div>
       {/* Special skill buttons above the board */}
       <div
@@ -940,6 +994,7 @@ function App() {
       )}
       {/* Show top score at the top */}
       <div
+        id="snake-topscore-admin"
         style={{
           position: "fixed",
           top: 0,
