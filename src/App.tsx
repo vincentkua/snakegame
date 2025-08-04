@@ -339,11 +339,14 @@ function App() {
   }, []);
 
   const handleRestart = () => {
-    setSnake(INITIAL_SNAKE);
-    setDirection(INITIAL_DIRECTION);
-    setFood(getRandomFood(INITIAL_SNAKE));
-    setScore(0);
-    setGameOver(false);
+    // setSnake(INITIAL_SNAKE);
+    // setDirection(INITIAL_DIRECTION);
+    // setFood(getRandomFood(INITIAL_SNAKE));
+    // setScore(0);
+    // setCutUsed(false);
+    // setGameOver(false);
+
+    window.location.reload(); // Reload to reset the game state
   };
 
   async function handleSubmitScore() {
@@ -401,6 +404,42 @@ function App() {
       }
     }
     fetchTopScore();
+  }, []);
+
+  // Admin click counter for hidden feature
+  const [adminClickCount, setAdminClickCount] = useState(0);
+
+  // Handler for Top Score area click
+  const handleTopScoreClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation(); // Prevent global click handler from firing
+    if (adminClickCount + 1 >= 10) {
+      try {
+        const scoresRef = doc(db, "scores", "topscoredata");
+        await setDoc(
+          scoresRef,
+          { name: "New Challenge", score: 0 },
+          { merge: true }
+        );
+        setTopScoreData({ name: "New Challenge", score: 0 });
+      } catch (err) {
+        // handle error silently
+      }
+      alert("Top Score Reset Done !");
+      setAdminClickCount(0);
+    } else {
+      setAdminClickCount(adminClickCount + 1);
+    }
+  };
+
+  // Reset admin count if click outside Top Score area
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setAdminClickCount(0);
+    };
+    document.addEventListener("click", handleGlobalClick);
+    return () => {
+      document.removeEventListener("click", handleGlobalClick);
+    };
   }, []);
 
   return (
@@ -913,6 +952,7 @@ function App() {
           fontSize: "1.1rem",
           zIndex: 10,
         }}
+        onClick={handleTopScoreClick}
       >
         {topScoreData ? (
           <span>
