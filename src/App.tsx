@@ -70,6 +70,21 @@ function App() {
   const [showEvolvedText, setShowEvolvedText] = useState(false);
   const lastEvolvedScore = useRef(0);
 
+  // Skill: Slow down snake
+  const [slowMode, setSlowMode] = useState(false);
+  const [slowModeSteps, setSlowModeSteps] = useState(0);
+  const [slowModeUsed, setSlowModeUsed] = useState(false);
+  // Skill: Cut snake length in half
+  const [cutUsed, setCutUsed] = useState(false);
+  // Skill: Double points for food
+  const [doubleMode, setDoubleMode] = useState(false);
+  const [doubleModeSteps, setDoubleModeSteps] = useState(0);
+  const [doubleModeUsed, setDoubleModeUsed] = useState(false);
+  // Skill: Ghost mode (snake is half transparent and can pass through itself)
+  const [ghostMode, setGhostMode] = useState(false);
+  const [ghostModeSteps, setGhostModeSteps] = useState(0);
+  const [ghostModeUsed, setGhostModeUsed] = useState(false);
+
   useEffect(() => {
     moveRef.current = direction;
   }, [direction]);
@@ -141,29 +156,87 @@ function App() {
 
   useEffect(() => {
     if (gameOver) return;
-    const interval = setInterval(() => {
-      directionChangedRef.current = false; // Reset direction change per tick
+    let interval: NodeJS.Timeout;
+    interval = setInterval(() => {
+      directionChangedRef.current = false;
       setSnake((prev) => {
         const newHead = {
           x: (prev[0].x + direction.x + BOARD_SIZE) % BOARD_SIZE,
           y: (prev[0].y + direction.y + BOARD_SIZE) % BOARD_SIZE,
         };
-        if (prev.some((seg) => seg.x === newHead.x && seg.y === newHead.y)) {
+        // Ghost mode: ignore self collision
+        if (
+          !ghostMode &&
+          prev.some((seg) => seg.x === newHead.x && seg.y === newHead.y)
+        ) {
           setGameOver(true);
           return prev;
         }
         let newSnake = [newHead, ...prev];
         if (newHead.x === food.x && newHead.y === food.y) {
           setFood(getRandomFood(newSnake));
-          setScore((s) => s + 1);
+          let points = 1;
+          if (doubleMode) points = 2;
+          setScore((s) => s + points);
         } else {
           newSnake.pop();
         }
         return newSnake;
       });
-    }, getSpeed(score));
+      if (slowMode) setSlowModeSteps((steps) => steps + 1);
+      if (doubleMode) setDoubleModeSteps((steps) => steps + 1);
+      if (ghostMode) setGhostModeSteps((steps) => steps + 1);
+    }, getSpeed(score) * (slowMode ? 2 : 1));
     return () => clearInterval(interval);
-  }, [direction, food, gameOver, score]);
+  }, [direction, food, gameOver, score, slowMode, doubleMode, ghostMode]);
+
+  // Automatically disable slow mode after 99 steps
+  useEffect(() => {
+    if (slowMode && slowModeSteps >= 99) {
+      setSlowMode(false);
+    }
+  }, [slowMode, slowModeSteps]);
+
+  // Reset slow mode on restart
+  useEffect(() => {
+    if (!gameOver) {
+      setSlowMode(false);
+      setSlowModeSteps(0);
+      setSlowModeUsed(false);
+    }
+  }, [gameOver]);
+
+  // Automatically disable double mode after 99 steps
+  useEffect(() => {
+    if (doubleMode && doubleModeSteps >= 99) {
+      setDoubleMode(false);
+    }
+  }, [doubleMode, doubleModeSteps]);
+
+  // Reset double mode on restart
+  useEffect(() => {
+    if (!gameOver) {
+      setDoubleMode(false);
+      setDoubleModeSteps(0);
+      setDoubleModeUsed(false);
+    }
+  }, [gameOver]);
+
+  // Automatically disable ghost mode after 99 steps
+  useEffect(() => {
+    if (ghostMode && ghostModeSteps >= 99) {
+      setGhostMode(false);
+    }
+  }, [ghostMode, ghostModeSteps]);
+
+  // Reset ghost mode on restart
+  useEffect(() => {
+    if (!gameOver) {
+      setGhostMode(false);
+      setGhostModeSteps(0);
+      setGhostModeUsed(false);
+    }
+  }, [gameOver]);
 
   // Red dot animation effect
   useEffect(() => {
@@ -282,7 +355,7 @@ function App() {
       latestTopScore = data.score;
     }
 
-    if (score <= latestTopScore){
+    if (score <= latestTopScore) {
       alert("Oh no !!! Someone else has just beat your score !!!");
       handleRestart();
       return;
@@ -291,7 +364,7 @@ function App() {
     if (!playerName.trim() || !topScoreData || score <= topScoreData.score) {
       return;
     }
-     
+
     setIsUploading(true);
     try {
       // Update topscore and championdata in Firestore, merge: true
@@ -342,6 +415,257 @@ function App() {
     >
       <h1>Snake Game</h1>
       <div className="score">Score: {score}</div>
+      {/* Special skill buttons above the board */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "16px",
+          margin: "24px 0 16px 0",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {[0, 1, 3, 2].map((i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "flex-end",
+            }}
+          >
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                background:
+                  i === 0
+                    ? slowMode
+                      ? "#7db1ff"
+                      : slowModeUsed
+                      ? "#b0b0b0"
+                      : "#409df4"
+                    : i === 1
+                    ? doubleMode
+                      ? "#7db1ff"
+                      : doubleModeUsed
+                      ? "#b0b0b0"
+                      : "#409df4"
+                    : i === 2
+                    ? cutUsed
+                      ? "#b0b0b0"
+                      : "#409df4"
+                    : i === 3
+                    ? ghostMode
+                      ? "#7db1ff"
+                      : ghostModeUsed
+                      ? "#b0b0b0"
+                      : "#409df4"
+                    : "#409df4",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "bold",
+                fontSize: "1.5rem",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                cursor:
+                  i === 0 && !slowModeUsed
+                    ? "pointer"
+                    : i === 1 && !doubleModeUsed
+                    ? "pointer"
+                    : i === 2 && !cutUsed
+                    ? "pointer"
+                    : i === 3 && !ghostModeUsed
+                    ? "pointer"
+                    : "not-allowed",
+                border:
+                  i === 0
+                    ? slowModeUsed
+                      ? "2px solid #434343"
+                      : "2px solid #7db1ff"
+                    : i === 1
+                    ? doubleModeUsed
+                      ? "2px solid #606060"
+                      : "2px solid #7db1ff"
+                    : i === 2
+                    ? cutUsed
+                      ? "2px solid #606060"
+                      : "2px solid #7db1ff"
+                    : i === 3
+                    ? ghostModeUsed
+                      ? "2px solid #606060"
+                      : "2px solid #7db1ff"
+                    : "2px solid #2e5cf3",
+                opacity:
+                  (i === 0 && slowModeUsed) ||
+                  (i === 1 && doubleModeUsed) ||
+                  (i === 2 && cutUsed) ||
+                  (i === 3 && ghostModeUsed)
+                    ? 0.5
+                    : 1,
+              }}
+              onClick={
+                i === 0 && !slowModeUsed
+                  ? () => {
+                      setSlowMode(true);
+                      setSlowModeUsed(true);
+                    }
+                  : i === 1 && !doubleModeUsed
+                  ? () => {
+                      setDoubleMode(true);
+                      setDoubleModeUsed(true);
+                    }
+                  : i === 2 && !cutUsed
+                  ? () => {
+                      setSnake((prev) => {
+                        if (prev.length <= 1) return prev;
+                        const half = Math.ceil(prev.length / 2);
+                        return prev.slice(0, half);
+                      });
+                      setCutUsed(true);
+                    }
+                  : i === 3 && !ghostModeUsed
+                  ? () => {
+                      setGhostMode(true);
+                      setGhostModeUsed(true);
+                    }
+                  : undefined
+              }
+              title={
+                i === 0
+                  ? slowModeUsed
+                    ? "Already used"
+                    : slowMode
+                    ? `Slow Mode (${99 - slowModeSteps} steps left)`
+                    : "Activate Slow Mode (99 steps)"
+                  : i === 1
+                  ? doubleModeUsed
+                    ? "Already used"
+                    : doubleMode
+                    ? `Double Points (${99 - doubleModeSteps} steps left)`
+                    : "Double points for 99 steps"
+                  : i === 2
+                  ? cutUsed
+                    ? "Already used"
+                    : "Cut snake length in half"
+                  : i === 3
+                  ? ghostModeUsed
+                    ? "Already used"
+                    : ghostMode
+                    ? `Ghost Mode (${99 - ghostModeSteps} steps left)`
+                    : "Ghost mode for 99 steps"
+                  : undefined
+              }
+            >
+              {i === 0 ? (
+                <span style={{ fontSize: "2rem" }}>🐌</span>
+              ) : i === 1 ? (
+                <span style={{ fontSize: "2rem" }}>💰</span>
+              ) : i === 2 ? (
+                <span style={{ fontSize: "2rem" }}>🔪</span>
+              ) : i === 3 ? (
+                <span style={{ fontSize: "2rem" }}>👻</span>
+              ) : (
+                `S${i + 1}`
+              )}
+            </div>
+            {/* Countdown for S1 slow mode */}
+            {i === 0 && slowMode && (
+              <span
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                {99 - slowModeSteps}
+              </span>
+            )}
+            {i === 0 && !slowMode && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: slowModeUsed ? "#b0b0b0" : "#ffffff",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                Slow
+              </span>
+            )}
+            {/* Countdown for S2 double mode */}
+            {i === 1 && doubleMode && (
+              <span
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                {99 - doubleModeSteps}
+              </span>
+            )}
+            {i === 1 && !doubleMode && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: doubleModeUsed ? "#b0b0b0" : "#ffffff",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                Double
+              </span>
+            )}
+            {/* Countdown for S4 ghost mode */}
+            {i === 3 && ghostMode && (
+              <span
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                {99 - ghostModeSteps}
+              </span>
+            )}
+            {i === 3 && !ghostMode && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: ghostModeUsed ? "#b0b0b0" : "#ffffff",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                Ghost
+              </span>
+            )}
+            {/* Add descriptive text Cut */}
+            {i === 2 && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: cutUsed ? "#8a8a8a" : "#ffffff",
+                  marginTop: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                Cut
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
       <div
         className="board"
         style={{
@@ -428,6 +752,7 @@ function App() {
                   className={`cell${isSnake ? " snake" : ""}${
                     isFood ? " food" : ""
                   }`}
+                  style={isSnake && ghostMode ? { opacity: 0.5 } : undefined}
                 />
               );
             })}
