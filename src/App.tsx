@@ -525,7 +525,7 @@ function App() {
           zIndex: 1,
         }}
       >
-        {[0, 1, 3, 2].map((i) => (
+        {[3, 0, 1, 2].map((i) => (
           <div
             key={i}
             style={{
