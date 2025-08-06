@@ -194,7 +194,7 @@ function App() {
       if (ghostMode) setGhostModeSteps((steps) => steps + 1);
     }, getSpeed(score) * (slowMode ? 2 : 1));
     return () => clearInterval(interval);
-  }, [direction, food, gameOver, score, slowMode, doubleMode, ghostMode]);
+  }, [direction, food, gameOver, score, slowMode, doubleMode, ghostMode, ghostModeUsed]);
 
   // Automatically disable slow mode after 99 steps
   useEffect(() => {
