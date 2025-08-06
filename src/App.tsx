@@ -164,13 +164,19 @@ function App() {
           x: (prev[0].x + direction.x + BOARD_SIZE) % BOARD_SIZE,
           y: (prev[0].y + direction.y + BOARD_SIZE) % BOARD_SIZE,
         };
-        // Ghost mode: ignore self collision
-        if (
-          !ghostMode &&
-          prev.some((seg) => seg.x === newHead.x && seg.y === newHead.y)
-        ) {
-          setGameOver(true);
-          return prev;
+        // Check for self collision
+        const hitSelf = prev.some((seg) => seg.x === newHead.x && seg.y === newHead.y);
+        
+        if (hitSelf && !ghostMode) {
+          // Auto-activate ghost mode if not used yet, otherwise end game
+          if (!ghostModeUsed) {
+            setGhostMode(true);
+            setGhostModeUsed(true);
+            setGhostModeSteps(0);
+          } else {
+            setGameOver(true);
+            return prev;
+          }
         }
         let newSnake = [newHead, ...prev];
         if (newHead.x === food.x && newHead.y === food.y) {
