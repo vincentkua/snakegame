@@ -25,6 +25,28 @@ function getRandomFood(snake: { x: number; y: number }[]): {
   return food;
 }
 
+function getMultipleFoods(snake: { x: number; y: number }[], count: number): {
+  x: number;
+  y: number;
+}[] {
+  const foods: { x: number; y: number }[] = [];
+  const occupiedPositions = new Set(snake.map(seg => `${seg.x},${seg.y}`));
+  
+  while (foods.length < count) {
+    const food = {
+      x: Math.floor(Math.random() * BOARD_SIZE),
+      y: Math.floor(Math.random() * BOARD_SIZE),
+    };
+    const posKey = `${food.x},${food.y}`;
+    
+    if (!occupiedPositions.has(posKey)) {
+      foods.push(food);
+      occupiedPositions.add(posKey);
+    }
+  }
+  return foods;
+}
+
 function isMobile() {
   return /Mobi|Android/i.test(navigator.userAgent);
 }
@@ -84,6 +106,11 @@ function App() {
   const [ghostMode, setGhostMode] = useState(false);
   const [ghostModeSteps, setGhostModeSteps] = useState(0);
   const [ghostModeUsed, setGhostModeUsed] = useState(false);
+  // Skill: Multi-food mode (shows 5 foods on screen)
+  const [multiFoodMode, setMultiFoodMode] = useState(false);
+  const [multiFoodSteps, setMultiFoodSteps] = useState(0);
+  const [multiFoodUsed, setMultiFoodUsed] = useState(false);
+  const [foods, setFoods] = useState<{ x: number; y: number }[]>([]);
 
   useEffect(() => {
     moveRef.current = direction;
@@ -156,8 +183,7 @@ function App() {
 
   useEffect(() => {
     if (gameOver) return;
-    let interval: NodeJS.Timeout;
-    interval = setInterval(() => {
+    const interval: NodeJS.Timeout = setInterval(() => {
       directionChangedRef.current = false;
       setSnake((prev) => {
         const newHead = {
@@ -178,9 +204,30 @@ function App() {
             return prev;
           }
         }
-        let newSnake = [newHead, ...prev];
-        if (newHead.x === food.x && newHead.y === food.y) {
-          setFood(getRandomFood(newSnake));
+        const newSnake = [newHead, ...prev];
+        
+        // Check food collision - handle both single food and multiple foods
+        let foodEaten = false;
+        if (multiFoodMode && foods.length > 0) {
+          // Check collision with any of the multiple foods
+          const eatenFoodIndex = foods.findIndex(f => f.x === newHead.x && f.y === newHead.y);
+          if (eatenFoodIndex !== -1) {
+            // Remove the eaten food and add a new one
+            const newFoods = [...foods];
+            newFoods.splice(eatenFoodIndex, 1);
+            newFoods.push(...getMultipleFoods(newSnake, 1));
+            setFoods(newFoods);
+            foodEaten = true;
+          }
+        } else {
+          // Single food mode
+          if (newHead.x === food.x && newHead.y === food.y) {
+            setFood(getRandomFood(newSnake));
+            foodEaten = true;
+          }
+        }
+        
+        if (foodEaten) {
           let points = 1;
           if (doubleMode) points = 2;
           setScore((s) => s + points);
@@ -192,9 +239,10 @@ function App() {
       if (slowMode) setSlowModeSteps((steps) => steps + 1);
       if (doubleMode) setDoubleModeSteps((steps) => steps + 1);
       if (ghostMode) setGhostModeSteps((steps) => steps + 1);
+      if (multiFoodMode) setMultiFoodSteps((steps) => steps + 1);
     }, getSpeed(score) * (slowMode ? 2 : 1));
     return () => clearInterval(interval);
-  }, [direction, food, gameOver, score, slowMode, doubleMode, ghostMode, ghostModeUsed]);
+  }, [direction, food, gameOver, score, slowMode, doubleMode, ghostMode, ghostModeUsed, multiFoodMode, foods]);
 
   // Automatically disable slow mode after 99 steps
   useEffect(() => {
@@ -241,6 +289,24 @@ function App() {
       setGhostMode(false);
       setGhostModeSteps(0);
       setGhostModeUsed(false);
+    }
+  }, [gameOver]);
+
+  // Automatically disable multi-food mode after 99 steps
+  useEffect(() => {
+    if (multiFoodMode && multiFoodSteps >= 99) {
+      setMultiFoodMode(false);
+      setFoods([]);
+    }
+  }, [multiFoodMode, multiFoodSteps]);
+
+  // Reset multi-food mode on restart
+  useEffect(() => {
+    if (!gameOver) {
+      setMultiFoodMode(false);
+      setMultiFoodSteps(0);
+      setMultiFoodUsed(false);
+      setFoods([]);
     }
   }, [gameOver]);
 
@@ -525,7 +591,7 @@ function App() {
           zIndex: 1,
         }}
       >
-        {[3, 0, 1, 2].map((i) => (
+        {[3, 0, 1, 2, 4].map((i) => (
           <div
             key={i}
             style={{
@@ -562,6 +628,12 @@ function App() {
                       : ghostModeUsed
                       ? "#b0b0b0"
                       : "#409df4"
+                    : i === 4
+                    ? multiFoodMode
+                      ? "#7db1ff"
+                      : multiFoodUsed
+                      ? "#b0b0b0"
+                      : "#409df4"
                     : "#409df4",
                 borderRadius: "8px",
                 display: "flex",
@@ -578,6 +650,8 @@ function App() {
                     : i === 2 && !cutUsed
                     ? "pointer"
                     : i === 3 && !ghostModeUsed
+                    ? "pointer"
+                    : i === 4 && !multiFoodUsed
                     ? "pointer"
                     : "not-allowed",
                 border:
@@ -597,12 +671,17 @@ function App() {
                     ? ghostModeUsed
                       ? "2px solid #606060"
                       : "2px solid #7db1ff"
+                    : i === 4
+                    ? multiFoodUsed
+                      ? "2px solid #606060"
+                      : "2px solid #7db1ff"
                     : "2px solid #2e5cf3",
                 opacity:
                   (i === 0 && slowModeUsed) ||
                   (i === 1 && doubleModeUsed) ||
                   (i === 2 && cutUsed) ||
-                  (i === 3 && ghostModeUsed)
+                  (i === 3 && ghostModeUsed) ||
+                  (i === 4 && multiFoodUsed)
                     ? 0.5
                     : 1,
               }}
@@ -631,6 +710,14 @@ function App() {
                       setGhostMode(true);
                       setGhostModeUsed(true);
                     }
+                  : i === 4 && !multiFoodUsed
+                  ? () => {
+                      setMultiFoodMode(true);
+                      setMultiFoodUsed(true);
+                      setMultiFoodSteps(0);
+                      // Generate 5 foods
+                      setFoods(getMultipleFoods(snake, 5));
+                    }
                   : undefined
               }
               title={
@@ -656,6 +743,12 @@ function App() {
                     : ghostMode
                     ? `Ghost Mode (${99 - ghostModeSteps} steps left)`
                     : "Ghost mode for 99 steps"
+                  : i === 4
+                  ? multiFoodUsed
+                    ? "Already used"
+                    : multiFoodMode
+                    ? `Multi-Food (${99 - multiFoodSteps} steps left)`
+                    : "Show 5 foods for 99 steps"
                   : undefined
               }
             >
@@ -667,6 +760,8 @@ function App() {
                 <span style={{ fontSize: "2rem" }}>🔪</span>
               ) : i === 3 ? (
                 <span style={{ fontSize: "2rem" }}>👻</span>
+              ) : i === 4 ? (
+                <span style={{ fontSize: "2rem" }}>🍎</span>
               ) : (
                 `S${i + 1}`
               )}
@@ -762,6 +857,32 @@ function App() {
                 Cut
               </span>
             )}
+            {/* Countdown for S5 multi-food mode */}
+            {i === 4 && multiFoodMode && (
+              <span
+                style={{
+                  fontSize: "0.9rem",
+                  color: "#ffffff",
+                  fontWeight: "bold",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                {99 - multiFoodSteps}
+              </span>
+            )}
+            {i === 4 && !multiFoodMode && (
+              <span
+                style={{
+                  fontSize: "0.8rem",
+                  color: multiFoodUsed ? "#b0b0b0" : "#ffffff",
+                  marginBottom: "2px",
+                  minHeight: "18px",
+                }}
+              >
+                Multi
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -844,7 +965,10 @@ function App() {
           <div className="row" key={y}>
             {[...Array(BOARD_SIZE)].map((_, x) => {
               const isSnake = snake.some((seg) => seg.x === x && seg.y === y);
-              const isFood = food.x === x && food.y === y;
+              const isFood = multiFoodMode 
+                ? foods.some((f) => f.x === x && f.y === y)
+                : food.x === x && food.y === y;
+              
               return (
                 <div
                   key={x}
