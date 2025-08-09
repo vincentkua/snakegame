@@ -454,7 +454,7 @@ function App() {
         { merge: true }
       );
       setTopScoreData({ name: playerName.trim(), score }); // Update local state
-    } catch (err) {
+    } catch {
       // handle error
     }
     setIsUploading(false);
@@ -471,7 +471,7 @@ function App() {
         } else {
           setTopScoreData(null);
         }
-      } catch (err) {
+      } catch {
         setTopScoreData(null);
       }
     }
@@ -526,7 +526,7 @@ function App() {
             { merge: true }
           );
           setTopScoreData({ name: "New Challenge", score: 0 });
-        } catch (err) {
+        } catch {
           // handle error silently
         }
         alert("Top Score Reset Done !");
